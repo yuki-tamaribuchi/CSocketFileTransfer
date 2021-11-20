@@ -73,6 +73,27 @@ int recieve_file(int sock, FILE* file, long* file_size){
 	return TRUE;
 }
 
+int save_file(FILE* file, long* file_size){
+	FILE* dest_file_ptr;
+
+	if((dest_file_ptr = fopen("temp", "w+"))==NULL){
+		perror("Failed to fopen()\n");
+		return FALSE;
+	}
+
+	if(fwrite(file, *file_size, 1, dest_file_ptr)<1){
+		perror("Failed to fwrite()\n");
+		return FALSE;
+	}
+
+	if(fclose(dest_file_ptr)<0){
+		perror("Failed to fclose()\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 
 int main(){
 	int sock, new_sock;
@@ -104,6 +125,10 @@ int main(){
 		return FALSE;
 	}
 
+	if(save_file(&file, &file_size)<0){
+		perror("Failed to save_file()\n");
+		return FALSE;
+	}
 	
 	close(sock);
 	close(new_sock);
