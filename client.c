@@ -26,7 +26,7 @@ int open_and_bind_socket(){
 		return FALSE;
 	}
 
-	if(bind(sock, (struct sockaddr_in *)&writer_sin, sizeof(struct sockaddr))<0){
+	if(bind(sock, (struct sockaddr *)&writer_sin, sizeof(struct sockaddr))<0){
 		perror("Failed to bind socket\n");
 		close(sock);
 		return FALSE;
@@ -43,7 +43,7 @@ int do_connect(int sock, char* dest_ip_addr){
 	reader_sin.sin_port = htons(PORT_USED);
 	reader_sin.sin_addr.s_addr = inet_addr(dest_ip_addr);
 
-	if(connect(sock, (struct sockaddr_in *)&reader_sin, sizeof(struct sockaddr_in))<0){
+	if(connect(sock, (struct sockaddr *)&reader_sin, sizeof(struct sockaddr_in))<0){
 		perror("Failed to connect\n");
 		return FALSE;
 	}
@@ -117,12 +117,12 @@ int main(int argc, char **argv){
 		return FALSE;
 	}
 
-	if(do_connect(sock, &dest_ip_addr)<0){
+	if(do_connect(sock, dest_ip_addr)<0){
 		perror("Faild to do_connect\n");
 		return FALSE;
 	}
 
-	if(do_send_file(sock, &file_path)<0){
+	if(do_send_file(sock, file_path)<0){
 		perror("Failed to do_send_file()\n");
 		return FALSE;
 	}
