@@ -51,9 +51,10 @@ int do_connect(int sock, char* dest_ip_addr){
 }
 
 
-int do_send_file(int sock, char* file_path){
+int do_send_file(int sock, char* file_path, long* file_size_ptr){
 	FILE* file_ptr;
 	long file_size;
+	char file_read_buf[100000]; //1000KB
 
 	if((file_ptr = fopen(file_path, "r"))==NULL){
 		perror("Failed to open file\n");
@@ -73,13 +74,21 @@ int do_send_file(int sock, char* file_path){
 		return FALSE;
 	}
 
+	*file_size_ptr = file_size;
+
 	if(fseek(file_ptr, 0, SEEK_SET)<0){
 		perror("Failed to fseek() SEEK_SET\n");
 		close(sock);
 		return FALSE;
 	}
 
-	if(send(sock, (const void*)file_ptr, file_size, 0)<0){
+
+	if(fread(&file_read_buf, file_size, 1, file_ptr)<1){
+		perror("Failed to fread()\n");
+		return FALSE;
+	}
+
+	if(send(sock, (const void*)&file_read_buf, file_size, 0)<0){
 		perror("Failed to send()\n");
 		close(sock);
 		return FALSE;
@@ -92,6 +101,7 @@ int do_send_file(int sock, char* file_path){
 int main(int argc, char **argv){
 	char file_path[200], dest_ip_addr[16];
 	int sock;
+	long file_size;
 
 	if(argc<3){
 		printf("Pass file path and destination ip address as commandline argument\n");
@@ -122,10 +132,13 @@ int main(int argc, char **argv){
 		return FALSE;
 	}
 
-	if(do_send_file(sock, file_path)<0){
+	if(do_send_file(sock, file_path, &file_size)<0){
 		perror("Failed to do_send_file()\n");
 		return FALSE;
 	}
+
+	printf("File size is %d\n", file_size);
+	printf("Sent file\n");
 	
 	close(sock);
 	return TRUE;
