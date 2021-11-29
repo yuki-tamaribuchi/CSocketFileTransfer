@@ -11,6 +11,13 @@
 
 #define PORT_USED 60000
 
+struct file_struct{
+	char file_name[255];
+	long file_size;
+	char file_read_buf[100000]; //1000KB
+	
+};
+
 
 int open_and_bind_socket(){
 	int sock;
@@ -51,16 +58,20 @@ int do_connect(int sock, char* dest_ip_addr){
 }
 
 
-int do_send_file(int sock, char* file_path, long* file_size_ptr){
+int do_send_file(int sock, char* file_path){
 	FILE* file_ptr;
 	long file_size;
-	char file_read_buf[100000]; //1000KB
+	struct file_struct send_file_struct;
+
+	memset(&send_file_struct, 0, sizeof(struct file_struct));
 
 	if((file_ptr = fopen(file_path, "r"))==NULL){
 		perror("Failed to open file\n");
 		close(sock);
 		return FALSE;
 	};
+
+	strncpy((char*)send_file_struct.file_name, file_path, 255);
 
 	if(fseek(file_ptr, 0, SEEK_END)<0){
 		perror("Failed to fseek() SEEK_END\n");
@@ -73,8 +84,8 @@ int do_send_file(int sock, char* file_path, long* file_size_ptr){
 		close(sock);
 		return FALSE;
 	}
-
-	*file_size_ptr = file_size;
+	
+	memcpy((void*)&send_file_struct.file_size, (const void*)&file_size, sizeof(file_size));
 
 	if(fseek(file_ptr, 0, SEEK_SET)<0){
 		perror("Failed to fseek() SEEK_SET\n");
@@ -82,13 +93,12 @@ int do_send_file(int sock, char* file_path, long* file_size_ptr){
 		return FALSE;
 	}
 
-
-	if(fread(&file_read_buf, file_size, 1, file_ptr)<1){
+	if(fread(&send_file_struct.file_read_buf, file_size, 1, file_ptr)<1){
 		perror("Failed to fread()\n");
 		return FALSE;
 	}
 
-	if(send(sock, (const void*)&file_read_buf, file_size, 0)<0){
+	if(send(sock, (const void*)&send_file_struct, sizeof(struct file_struct), 0)<0){
 		perror("Failed to send()\n");
 		close(sock);
 		return FALSE;
@@ -99,9 +109,8 @@ int do_send_file(int sock, char* file_path, long* file_size_ptr){
 
 
 int main(int argc, char **argv){
-	char file_path[200], dest_ip_addr[16];
+	char file_path[1023], dest_ip_addr[16];
 	int sock;
-	long file_size;
 
 	if(argc<3){
 		printf("Pass file path and destination ip address as commandline argument\n");
@@ -132,12 +141,11 @@ int main(int argc, char **argv){
 		return FALSE;
 	}
 
-	if(do_send_file(sock, file_path, &file_size)<0){
+	if(do_send_file(sock, file_path)<0){
 		perror("Failed to do_send_file()\n");
 		return FALSE;
 	}
 
-	printf("File size is %d\n", file_size);
 	printf("Sent file\n");
 	
 	close(sock);

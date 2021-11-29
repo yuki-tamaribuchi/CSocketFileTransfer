@@ -11,6 +11,14 @@
 #define PORT_USED 60000
 
 
+struct file_struct{
+	char file_name[255];
+	long file_size;
+	char file_buf[100000]; //1000KB
+	
+};
+
+
 int open_and_bind_socket(){
 	int sock;
 	struct sockaddr_in reader_sin;
@@ -61,32 +69,43 @@ int accept_connection(int sock){
 	}
 }
 
-int recieve_file(int sock, FILE* file, long* file_size){
+int recieve_file(int sock, struct file_struct* recv_file_struct){
+	char buff[1000271];
+	long file_size;
 
-	if((*file_size = recv(sock, (void*)file, sizeof(FILE), 0))<0){
+	if((file_size=recv(sock, (void*)buff, sizeof(buff), 0))<0){
 		perror("Failed to recv\n");
 		close(sock);
 		return FALSE;
 	}
-	printf("File recieved\nFile size: %dbyte\n", *file_size);
+	memcpy((void*)recv_file_struct, (const void*)buff, file_size);
 
 	return TRUE;
 }
 
-int save_file(FILE* file, long* file_size){
+int save_file(struct file_struct* recv_file_struct){
 	FILE* dest_file_ptr;
+	char file_name[255], file_buf[1000000];
+	long file_size;
 
-	if((dest_file_ptr = fopen("temp", "w+"))==NULL){
+	strncpy(file_name, recv_file_struct->file_name, 255);
+	file_size = recv_file_struct->file_size;
+	memcpy((void*)file_buf, (void*)recv_file_struct->file_buf, file_size);
+	printf("File name: %s\n", file_name);
+	printf("File size: %d\n", file_size);
+	
+
+	if((dest_file_ptr = fopen(file_name, "w+"))==NULL){
 		perror("Failed to fopen()\n");
 		return FALSE;
 	}
 
-	if(fwrite(file, *file_size, 1, dest_file_ptr)<1){
+	if(fwrite(file_buf, file_size, 1, dest_file_ptr)<1){
 		perror("Failed to fwrite()\n");
 		return FALSE;
 	}
 
-	if(fclose(dest_file_ptr)<0){
+	if(fclose(dest_file_ptr)==EOF){
 		perror("Failed to fclose()\n");
 		return FALSE;
 	}
@@ -97,38 +116,42 @@ int save_file(FILE* file, long* file_size){
 
 int main(){
 	int sock, new_sock;
-	long file_size;
-	FILE file;
+	struct file_struct recv_file_struct;
 
-	memset(&file, 0, sizeof(FILE));
+	memset((void*)&recv_file_struct, 0, sizeof(struct file_struct));
 
 	if((sock = open_and_bind_socket())<0){
 		perror("Failed to open_and_bind_socket()\n");
 		return FALSE;
 	}
+	printf("Socket opened\n");
 
 	if(do_listen(sock)<0){
 		perror("Failed to do_listen()\n");
 		close(sock);
 		return FALSE;
 	}
+	printf("Listen socket\n");
 
 	if((new_sock = accept_connection(sock))<0){
 		perror("Failed to accept_connection()\n");
 		close(sock);
 		return FALSE;
 	}
+	printf("New socket opened\n");
 
-	if(recieve_file(new_sock, &file, &file_size)<0){
+	if(recieve_file(new_sock, &recv_file_struct)<0){
 		perror("Failed to recieve_file()\n");
 		close(new_sock);
 		return FALSE;
 	}
+	printf("File recieved\n");
 
-	if(save_file(&file, &file_size)<0){
+	if(save_file(&recv_file_struct)<0){
 		perror("Failed to save_file()\n");
 		return FALSE;
 	}
+	printf("File saved\n");
 	
 	close(sock);
 	close(new_sock);
