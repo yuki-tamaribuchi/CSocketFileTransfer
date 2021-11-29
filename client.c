@@ -5,6 +5,7 @@
 #include<fcntl.h>
 #include<unistd.h>
 #include<arpa/inet.h>
+#include<libgen.h>
 
 #define TRUE 0
 #define FALSE -1
@@ -70,8 +71,8 @@ int do_send_file(int sock, char* file_path){
 		close(sock);
 		return FALSE;
 	};
-
-	strncpy((char*)send_file_struct.file_name, file_path, 255);
+	
+	strncpy((char*)send_file_struct.file_name, basename(file_path), 255);
 
 	if(fseek(file_ptr, 0, SEEK_END)<0){
 		perror("Failed to fseek() SEEK_END\n");
@@ -111,6 +112,7 @@ int do_send_file(int sock, char* file_path){
 int main(int argc, char **argv){
 	char file_path[1023], dest_ip_addr[16];
 	int sock;
+	char file_name[255];
 
 	if(argc<3){
 		printf("Pass file path and destination ip address as commandline argument\n");
